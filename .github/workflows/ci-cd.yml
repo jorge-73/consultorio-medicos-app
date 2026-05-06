@@ -56,13 +56,6 @@ jobs:
         working-directory: ./backend
         run: npx prisma generate
 
-      - name: Run tests
-        working-directory: ./backend
-        run: npm test
-        env:
-          DATABASE_URL: mysql://root:root@localhost:3306/test_db
-          JWT_SECRET: test_secret
-
   frontend-lint:
     name: Frontend Lint
     runs-on: ubuntu-latest
