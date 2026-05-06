@@ -1,3 +1,32 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:wght@500;600;700&display=swap');
+
+:root {
+  --color-primary: #0d9488;
+  --color-primary-dark: #0f766e;
+  --color-primary-light: #14b8a6;
+  --color-secondary: #f0fdfa;
+  --color-accent: #5eead4;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #fafafa;
+  --color-background: #f5f7f6;
+  --color-text-primary: #134e4a;
+  --color-text-secondary: #5f6b6a;
+  --color-text-muted: #8b9a98;
+  --color-border: #e2e8e6;
+  --color-border-light: #f0f0ee;
+  --color-success: #059669;
+  --color-warning: #d97706;
+  --color-error: #dc2626;
+  --shadow-sm: 0 1px 2px rgba(13, 148, 136, 0.05);
+  --shadow-md: 0 4px 12px rgba(13, 148, 136, 0.08);
+  --shadow-lg: 0 12px 32px rgba(13, 148, 136, 0.12);
+  --shadow-xl: 0 20px 48px rgba(13, 148, 136, 0.16);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -5,14 +34,16 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
-    'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  line-height: 1.6;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+  font-family: 'DM Sans', monospace;
 }
 
 #root {
@@ -26,6 +57,7 @@ a {
 
 button {
   font-family: inherit;
+  cursor: pointer;
 }
 
 input,
@@ -34,52 +66,72 @@ textarea {
   font-family: inherit;
 }
 
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Playfair Display', serif;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
 .fc {
-  --fc-border-color: #e5e7eb;
+  --fc-border-color: var(--color-border);
   --fc-button-text-color: #fff;
-  --fc-button-bg-color: #667eea;
-  --fc-button-border-color: #667eea;
-  --fc-button-hover-bg-color: #5568d3;
-  --fc-button-hover-border-color: #5568d3;
-  --fc-button-active-bg-color: #4c51bf;
-  --fc-button-active-border-color: #4c51bf;
-  --fc-event-bg-color: #667eea;
-  --fc-event-border-color: #667eea;
-  --fc-today-bg-color: #f3f4f6;
+  --fc-button-bg-color: var(--color-primary);
+  --fc-button-border-color: var(--color-primary);
+  --fc-button-hover-bg-color: var(--color-primary-dark);
+  --fc-button-hover-border-color: var(--color-primary-dark);
+  --fc-button-active-bg-color: var(--color-primary-dark);
+  --fc-button-active-border-color: var(--color-primary-dark);
+  --fc-event-bg-color: var(--color-primary);
+  --fc-event-border-color: var(--color-primary);
+  --fc-today-bg-color: var(--color-secondary);
+  --fc-page-bg-color: var(--color-surface);
+  --fc-neutral-bg-color: var(--color-surface-elevated);
 }
 
 .fc .fc-toolbar-title {
+  font-family: 'Playfair Display', serif;
   font-size: 1.5rem;
-  color: #333;
+  color: var(--color-text-primary);
 }
 
 .fc .fc-col-header-cell-cushion {
-  color: #666;
+  color: var(--color-text-secondary);
   font-weight: 600;
 }
 
 .fc .fc-daygrid-day-number {
-  color: #333;
+  color: var(--color-text-primary);
 }
 
 .fc .fc-event {
-  border-radius: 4px;
-  padding: 2px 6px;
+  border-radius: 6px;
+  padding: 3px 8px;
   font-size: 0.85rem;
-}
-
-.fc .fc-button {
-  border-radius: 5px;
-  padding: 8px 16px;
   font-weight: 500;
 }
 
+.fc .fc-button {
+  border-radius: var(--radius-sm);
+  padding: 8px 16px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
 .fc .fc-button:focus {
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.2);
 }
 
 .fc .fc-daygrid-day.fc-day-today {
-  background: var(--fc-today-bg-color);
+  background: var(--color-secondary);
+}
+
+.fc .fc-scrollgrid {
+  border-color: var(--color-border);
+}
+
+.fc .fc-col-header-cell {
+  background: var(--color-surface-elevated);
+  padding: 12px 0;
 }
 
 ::-webkit-scrollbar {
@@ -88,14 +140,29 @@ textarea {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--color-surface-elevated);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: var(--color-border);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a1a1a1;
+  background: var(--color-text-muted);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
