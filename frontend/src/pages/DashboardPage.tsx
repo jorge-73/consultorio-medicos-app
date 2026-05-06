@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { appointmentApi, doctorApi } from '../services/api';
 import FullCalendar from '@fullcalendar/react';
@@ -11,7 +11,6 @@ import './Dashboard.css';
 
 export const DashboardPage = () => {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
