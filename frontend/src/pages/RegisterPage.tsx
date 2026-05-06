@@ -86,7 +86,6 @@ export const RegisterPage = () => {
             <select id="role" value={role} onChange={(e) => setRole(e.target.value as Role)}>
               <option value="PATIENT">Paciente</option>
               <option value="DOCTOR">Médico</option>
-              <option value="ADMIN">Administrador</option>
             </select>
           </div>
 

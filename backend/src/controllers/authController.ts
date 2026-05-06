@@ -10,7 +10,7 @@ const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   name: z.string().min(2),
-  role: z.nativeEnum(Role).default(Role.PATIENT),
+  role: z.enum([Role.PATIENT, Role.DOCTOR]).default(Role.PATIENT),
   phone: z.string().optional(),
 });
 
