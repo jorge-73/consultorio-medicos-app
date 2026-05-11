@@ -1,19 +1,58 @@
 import { Link } from 'react-router-dom';
 import './LandingPage.css';
 
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "MedicalBusiness",
+  "name": "MediCare",
+  "description": "Plataforma de gestión de citas médicas conectando pacientes con doctores especializados.",
+  "url": "https://medicare.example.com",
+  "telephone": "+52-555-123-4567",
+  "address": {
+    "@type": "PostalAddress",
+    "addressCountry": "MX",
+    "addressRegion": "Ciudad de México"
+  },
+  "openingHoursSpecification": [
+    {
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+      "opens": "07:00",
+      "closes": "20:00"
+    },
+    {
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": ["Saturday"],
+      "opens": "09:00",
+      "closes": "14:00"
+    }
+  ],
+  "priceRange": "$$"
+};
+
+const webSiteData = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "MediCare",
+  "url": "https://medicare.example.com"
+};
+
 export const LandingPage = () => {
   return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{__html: JSON.stringify(structuredData)}} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{__html: JSON.stringify(webSiteData)}} />
     <div className="landing">
-      <header className="landing-header">
+      <header className="landing-header" role="banner">
         <div className="landing-header-content">
-          <div className="landing-logo">
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <Link to="/" className="landing-logo" aria-label="MediCare - Ir al inicio">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
               <rect width="32" height="32" rx="8" fill="currentColor"/>
               <path d="M16 8v16M8 16h16" stroke="white" strokeWidth="3" strokeLinecap="round"/>
             </svg>
             <span>MediCare</span>
-          </div>
-          <nav className="landing-nav">
+          </Link>
+          <nav className="landing-nav" aria-label="Navegación principal">
             <a href="#features">Servicios</a>
             <a href="#about">Nosotros</a>
             <a href="#contact">Contacto</a>
@@ -25,21 +64,28 @@ export const LandingPage = () => {
         </div>
       </header>
 
-      <section className="landing-hero">
+      <main>
+      <section className="landing-hero" aria-labelledby="hero-title">
         <div className="landing-hero-bg">
           <img 
-            src="/landing-bg.png"
-            alt="Consultorio médico"
+            src="/landing-bg.png" 
+            alt="Consultorio médico moderno" 
             className="hero-full-image"
           />
           <div className="hero-image-overlay-full"></div>
+          <div className="hero-glow"></div>
+          <div className="hero-particles"></div>
+          <div className="hero-shapes">
+            <div className="hero-shape shape-1"></div>
+            <div className="hero-shape shape-2"></div>
+          </div>
         </div>
         <div className="landing-hero-content">
           <div className="hero-badge">
             <span className="badge-dot"></span>
             Cuidado médico de calidad
           </div>
-          <h1 className="hero-title">
+          <h1 className="hero-title" id="hero-title">
             Tu salud es nuestra
             <span className="hero-title-accent"> prioridad</span>
           </h1>
@@ -78,10 +124,10 @@ export const LandingPage = () => {
         </div>
       </section>
 
-      <section id="features" className="landing-features">
+      <section id="features" className="landing-features" aria-labelledby="features-title">
         <div className="landing-features-header">
           <span className="features-label">¿Por qué elegirnos?</span>
-          <h2 className="features-title">Una experiencia médica diseñada para ti</h2>
+          <h2 className="features-title" id="features-title">Una experiencia médica diseñada para ti</h2>
         </div>
         <div className="landing-features-grid">
           <div className="feature-card">
@@ -123,11 +169,11 @@ export const LandingPage = () => {
         </div>
       </section>
 
-      <section id="about" className="landing-about">
+      <section id="about" className="landing-about" aria-labelledby="about-title">
         <div className="landing-about-content">
           <div className="about-text">
             <span className="features-label">Sobre MediCare</span>
-            <h2>Comprometidos con tu bienestar</h2>
+            <h2 id="about-title">Comprometidos con tu bienestar</h2>
             <p>
               MediCare nace con la misión de democratizar el acceso a servicios 
               médicos de calidad. Creamos una plataforma que conecta pacientes 
@@ -173,24 +219,26 @@ export const LandingPage = () => {
         </div>
       </section>
 
-      <section className="landing-cta">
+      <section className="landing-cta" aria-labelledby="cta-title">
         <div className="cta-bg">
           <div className="cta-gradient"></div>
+          <div className="cta-pattern"></div>
         </div>
         <div className="cta-content">
-          <h2>¿Listo para cuidar tu salud?</h2>
+          <h2 id="cta-title">¿Listo para cuidar tu salud?</h2>
           <p>Únete a miles de pacientes que ya disfrutan de una mejor experiencia médica.</p>
           <Link to="/register" className="landing-btn landing-btn-primary landing-btn-lg">
             Crear Cuenta Gratis
           </Link>
         </div>
       </section>
+      </main>
 
-      <footer className="landing-footer">
+      <footer className="landing-footer" role="contentinfo">
         <div className="footer-content">
           <div className="footer-brand">
             <div className="landing-logo">
-              <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
                 <rect width="32" height="32" rx="8" fill="currentColor"/>
                 <path d="M16 8v16M8 16h16" stroke="white" strokeWidth="3" strokeLinecap="round"/>
               </svg>
@@ -198,46 +246,30 @@ export const LandingPage = () => {
             </div>
             <p>Tu salud, nuestra prioridad. Cuidado médico de calidad al alcance de todos.</p>
           </div>
-          <div className="footer-links">
+          <nav className="footer-links" aria-label="Enlaces del pie">
             <div className="footer-column">
               <h4>Servicios</h4>
-              <a href="#">Citas Médicas</a>
-              <a href="#">Doctores</a>
-              <a href="#">Especialidades</a>
+              <a href="#features">Citas Médicas</a>
+              <a href="#features">Doctores</a>
+              <a href="#features">Especialidades</a>
             </div>
             <div className="footer-column">
               <h4>Empresa</h4>
               <a href="#about">Nosotros</a>
               <a href="#contact">Contacto</a>
-              <a href="#">Carreras</a>
             </div>
             <div className="footer-column">
               <h4>Legal</h4>
               <a href="#">Privacidad</a>
               <a href="#">Términos</a>
-              <a href="#">Cookies</a>
             </div>
-          </div>
+          </nav>
         </div>
         <div className="footer-bottom">
-          <p>&copy; 2024 MediCare. Todos los derechos reservados.</p>
+          <p>&copy; 2026 MediCare. Todos los derechos reservados.</p>
         </div>
       </footer>
-
-      <script type="application/ld+json" dangerouslySetInnerHTML={{__html: JSON.stringify({
-        "@context": "https://schema.org",
-        "@type": "MedicalBusiness",
-        "name": "MediCare",
-        "description": "Plataforma de gestión de citas médicas conectando pacientes con doctores especializados.",
-        "url": "https://medicare.example.com",
-        "telephone": "+52-555-123-4567",
-        "address": {
-          "@type": "PostalAddress",
-          "addressCountry": "MX"
-        },
-        "openingHours": "Mo-Fr 07:00-20:00",
-        "priceRange": "$$"
-      })}} />
     </div>
+    </>
   );
 };

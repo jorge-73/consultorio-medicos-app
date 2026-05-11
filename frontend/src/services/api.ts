@@ -51,6 +51,8 @@ export const doctorApi = {
 
   getById: (id: number) => api.get<ApiResponse<Doctor>>(`/doctors/${id}`).then((res) => res.data),
 
+  getByUserId: (userId: number) => api.get<ApiResponse<Doctor>>(`/doctors/user/${userId}`).then((res) => res.data),
+
   create: (data: { userId: number; specialty: string; licenseNum: string; description?: string }) =>
     api.post<ApiResponse<Doctor>>('/doctors', data).then((res) => res.data),
 

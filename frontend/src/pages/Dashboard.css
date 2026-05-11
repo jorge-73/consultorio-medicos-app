@@ -503,36 +503,104 @@
   background: var(--color-secondary);
 }
 
-.fc .fc-event {
-  border-radius: 6px !important;
-  padding: 4px 8px !important;
-  font-weight: 500 !important;
-  border: none !important;
+.fc .fc-daygrid-day.fc-day-unavailable {
+  background-color: var(--color-unavailable) !important;
+  cursor: not-allowed !important;
 }
 
-.fc .fc-daygrid-event-dot {
-  display: none;
+.fc .fc-daygrid-day.fc-day-unavailable:hover {
+  background-color: var(--color-unavailable) !important;
 }
 
-.fc .fc-col-header-cell {
-  background: var(--color-surface-elevated);
-  padding: 12px 0;
+.fc .fc-daygrid-day.fc-day-unavailable .fc-daygrid-day-number {
+  opacity: 0.4;
 }
 
-.fc .fc-scrollgrid {
-  border-color: var(--color-border);
+.fc .fc-daygrid-day.fc-day-available {
+  background-color: var(--color-available) !important;
+  cursor: pointer !important;
 }
 
-.fc .fc-daygrid-day-number {
-  color: var(--color-text-secondary);
-  padding: 8px;
+.fc .fc-daygrid-day.fc-day-available:hover {
+  background-color: var(--color-available-hover) !important;
 }
 
-.fc .fc-day-today {
-  background: var(--color-secondary) !important;
+.fc .fc-daygrid-day.fc-day-available::before {
+  content: '';
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  width: 5px;
+  height: 5px;
+  background: var(--color-primary);
+  border-radius: 50%;
+  opacity: 0.5;
+  z-index: 1;
+  pointer-events: none;
 }
 
-.fc .fc-day-today .fc-daygrid-day-number {
-  color: var(--color-primary);
+.fc .fc-daygrid-day {
+  position: relative;
+}
+
+.fc .fc-daygrid-day-frame {
+  pointer-events: auto !important;
+}
+
+.fc .fc-daygrid-day.fc-day-unavailable .fc-daygrid-day-frame {
+  pointer-events: none !important;
+}
+
+.fc-day-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+
+.fc-day-btn:hover {
+  background: var(--color-available-hover);
+}
+
+.selected-date-display {
+  padding: 14px 16px;
+  background: var(--color-secondary);
+  border-radius: var(--radius-md);
   font-weight: 600;
+  color: var(--color-primary);
+  font-size: 0.95rem;
+  border: 2px solid var(--color-border-light);
+}
+
+.slots-grid .slot-btn {
+  padding: 10px 8px;
+  background: var(--color-surface-elevated);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  transition: all 0.25s ease;
+}
+
+.slots-grid .slot-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.slots-grid .slot-btn.selected {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  border-color: var(--color-primary);
+  color: white;
 }

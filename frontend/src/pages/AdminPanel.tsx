@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { doctorApi, appointmentApi, authApi } from '../services/api';
 import type { Doctor, User, Appointment } from '../types';
+import { formatDateShort } from '../utils/dateUtils';
 import './AdminPanel.css';
 
 export const AdminPanel = () => {
@@ -30,8 +31,13 @@ export const AdminPanel = () => {
     } else if (user.role !== 'ADMIN') {
       navigate('/dashboard');
     }
-    loadData();
   }, [user, navigate]);
+
+  useEffect(() => {
+    if (user && user.role === 'ADMIN') {
+      loadData();
+    }
+  }, [user]);
 
   const loadData = async () => {
     try {
@@ -284,7 +290,7 @@ export const AdminPanel = () => {
                       <td>{patient.name}</td>
                       <td>{patient.email}</td>
                       <td>{patient.phone || '-'}</td>
-                      <td>{patient.createdAt ? new Date(patient.createdAt).toLocaleDateString() : '-'}</td>
+                      <td>{patient.createdAt ? formatDateShort(patient.createdAt) : '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -313,7 +319,7 @@ export const AdminPanel = () => {
                     <div className="card-body">
                       <p><strong>Médico:</strong> {apt.doctor.user.name}</p>
                       <p><strong>Especialidad:</strong> {apt.doctor.specialty}</p>
-                      <p><strong>Fecha:</strong> {new Date(apt.date).toLocaleDateString()}</p>
+                      <p><strong>Fecha:</strong> {formatDateShort(apt.date)}</p>
                       <p><strong>Hora:</strong> {apt.startTime} - {apt.endTime}</p>
                       {apt.notes && <p><strong>Notas:</strong> {apt.notes}</p>}
                     </div>
@@ -395,6 +401,18 @@ export const AdminPanel = () => {
                     value={doctorForm.licenseNum}
                     onChange={e => setDoctorForm({ ...doctorForm, licenseNum: e.target.value })}
                     required
+                  />
+                </div>
+              )}
+              {editingDoctor && (
+                <div className="form-group">
+                  <label>Número de Licencia</label>
+                  <input
+                    type="text"
+                    value={doctorForm.licenseNum}
+                    readOnly
+                    disabled
+                    title="El número de licencia no se puede modificar"
                   />
                 </div>
               )}
