@@ -4,6 +4,7 @@ import { scheduleRepository } from '../repositories/scheduleRepository.js';
 import { doctorRepository } from '../repositories/doctorRepository.js';
 import { AppError } from '../middleware/error.js';
 import { emailService } from './emailService.js';
+import { parseDate, generateTimeSlots, getDayOfWeek, startOfDayDate, endOfDayDate, formatDateShort } from '../utils/dateUtils.js';
 import prisma from '../config/database.js';
 
 interface CreateAppointmentData {
@@ -26,28 +27,33 @@ export const appointmentService = {
       throw new AppError('Doctor is not active', 400);
     }
 
-    const schedule = await scheduleRepository.findByDay(data.doctorId, data.date.getDay());
+    const schedule = await scheduleRepository.findByDay(data.doctorId, getDayOfWeek(data.date));
     if (schedule.length === 0) {
       throw new AppError('Doctor not available on this day', 400);
     }
 
-    const hasConflict = await appointmentRepository.checkConflict(
+    const appointments = await appointmentRepository.findByDoctorAndDate(
       data.doctorId,
-      data.date,
-      data.startTime,
-      data.endTime
+      data.date
+    );
+    const hasConflict = appointments.some(
+      (a) => data.startTime < a.endTime && data.endTime > a.startTime
     );
     if (hasConflict) {
       throw new AppError('Time slot is already booked', 400);
+    }
+
+    if (data.startTime >= data.endTime) {
+      throw new AppError('End time must be after start time', 400);
     }
 
     const appointment = await appointmentRepository.create(data);
 
     const patient = await prisma.user.findUnique({ where: { id: data.patientId } });
     const doctorData = await doctorRepository.findById(data.doctorId);
-    
+
     if (patient && doctorData) {
-      const dateStr = data.date.toLocaleDateString('es-ES');
+      const dateStr = formatDateShort(data.date);
       emailService.sendAppointmentCreation(
         patient.email,
         patient.name,
@@ -90,37 +96,34 @@ export const appointmentService = {
       throw new AppError('Doctor not found', 404);
     }
 
-    const daySchedules = await scheduleRepository.findByDay(doctorId, date.getDay());
+    const daySchedules = await scheduleRepository.findByDay(doctorId, getDayOfWeek(date));
     if (daySchedules.length === 0) {
       return [];
     }
 
     const appointments = await appointmentRepository.findByDoctorAndDate(doctorId, date);
 
-    const allSlots: string[] = [];
-    const slotDuration = 30;
+    const availableSlots: string[] = [];
 
     for (const schedule of daySchedules) {
-      const [startHour, startMin] = schedule.startTime.split(':').map(Number);
-      const [endHour, endMin] = schedule.endTime.split(':').map(Number);
-
-      let currentHour = startHour;
-      let currentMin = startMin;
-
-      while (currentHour < endHour || (currentHour === endHour && currentMin < endMin)) {
-        const timeString = `${currentHour.toString().padStart(2, '0')}:${currentMin.toString().padStart(2, '0')}`;
-        allSlots.push(timeString);
-
-        currentMin += slotDuration;
-        if (currentMin >= 60) {
-          currentHour += 1;
-          currentMin = currentMin % 60;
+      const slots = generateTimeSlots(schedule.startTime, schedule.endTime);
+      for (const slot of slots) {
+        const slotEndMins = (() => {
+          const [h, m] = slot.split(':').map(Number);
+          return h * 60 + m + 30;
+        })();
+        const isBooked = appointments.some((a) => {
+          const [ah, am] = a.startTime.split(':').map(Number);
+          const [aeh, aem] = a.endTime.split(':').map(Number);
+          const aptStart = ah * 60 + am;
+          const aptEnd = aeh * 60 + aem;
+          return slotEndMins > aptStart && slotEndMins <= aptEnd;
+        });
+        if (!isBooked) {
+          availableSlots.push(slot);
         }
       }
     }
-
-    const bookedSlots = appointments.map((a) => a.startTime);
-    const availableSlots = allSlots.filter((slot) => !bookedSlots.includes(slot));
 
     return availableSlots;
   },
@@ -151,9 +154,9 @@ export const appointmentService = {
     if (appointment && updated) {
       const patient = await prisma.user.findUnique({ where: { id: appointment.patientId } });
       const doctorData = await doctorRepository.findById(appointment.doctorId);
-      
+
       if (patient && doctorData) {
-        const dateStr = new Date(appointment.date).toLocaleDateString('es-ES');
+        const dateStr = formatDateShort(appointment.date);
         emailService.sendAppointmentCancellation(
           patient.email,
           patient.name,
@@ -174,9 +177,9 @@ export const appointmentService = {
     if (appointment && updated) {
       const patient = await prisma.user.findUnique({ where: { id: appointment.patientId } });
       const doctorData = await doctorRepository.findById(appointment.doctorId);
-      
+
       if (patient && doctorData) {
-        const dateStr = new Date(appointment.date).toLocaleDateString('es-ES');
+        const dateStr = formatDateShort(appointment.date);
         emailService.sendAppointmentConfirmation(
           patient.email,
           patient.name,

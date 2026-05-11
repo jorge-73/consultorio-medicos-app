@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { AppointmentStatus, Role } from '@prisma/client';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
 import { appointmentService } from '../services/appointmentService.js';
+import { parseDate } from '../utils/dateUtils.js';
 
 const router = Router();
 
@@ -23,7 +24,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response, next) => 
     const data = createAppointmentSchema.parse(req.body);
     const appointment = await appointmentService.create({
       ...data,
-      date: new Date(data.date),
+      date: parseDate(data.date),
       patientId: req.user!.id,
     });
     res.status(201).json({ success: true, data: appointment });
@@ -39,14 +40,14 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response, next) => {
 
     if (req.user!.role === Role.ADMIN) {
       appointments = await appointmentService.getAll(
-        startDate ? new Date(startDate as string) : undefined,
-        endDate ? new Date(endDate as string) : undefined
+        startDate ? parseDate(startDate as string) : undefined,
+        endDate ? parseDate(endDate as string) : undefined
       );
     } else if (req.user!.role === Role.DOCTOR) {
       appointments = await appointmentService.getByDoctor(
         req.user!.id,
-        startDate ? new Date(startDate as string) : undefined,
-        endDate ? new Date(endDate as string) : undefined
+        startDate ? parseDate(startDate as string) : undefined,
+        endDate ? parseDate(endDate as string) : undefined
       );
     } else {
       appointments = await appointmentService.getByPatient(req.user!.id);
@@ -64,9 +65,11 @@ router.get('/available-slots', async (req, res: Response, next) => {
     if (!doctorId || !date) {
       return res.status(400).json({ success: false, error: 'doctorId and date are required' });
     }
+    const dateStr = date as string;
+    const dateObj = parseDate(dateStr);
     const slots = await appointmentService.getAvailableSlots(
       Number(doctorId),
-      new Date(date as string)
+      dateObj
     );
     res.json({ success: true, data: slots });
   } catch (error: any) {

@@ -44,6 +44,18 @@ router.get('/', async (_req, res: Response, next) => {
   }
 });
 
+router.get('/user/:userId', async (req, res: Response, next) => {
+  try {
+    const doctor = await doctorService.getByUserId(Number(req.params.userId));
+    if (!doctor) {
+      return res.status(404).json({ success: false, error: 'Doctor not found' });
+    }
+    res.json({ success: true, data: doctor });
+  } catch (error: any) {
+    next(error);
+  }
+});
+
 router.get('/:id', async (req, res: Response, next) => {
   try {
     const doctor = await doctorService.getById(Number(req.params.id));

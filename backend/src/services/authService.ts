@@ -19,33 +19,51 @@ interface LoginData {
 
 export const authService = {
   async register(data: RegisterData) {
-    const existing = await prisma.user.findUnique({ where: { email: data.email } });
-    if (existing) {
-      throw new AppError('Email already registered', 400);
+    try {
+      const existing = await prisma.user.findUnique({ where: { email: data.email } });
+      if (existing) {
+        throw new AppError('Email already registered', 400);
+      }
+
+      const hashedPassword = await bcrypt.hash(data.password, 12);
+
+      const user = await prisma.user.create({
+        data: {
+          email: data.email,
+          password: hashedPassword,
+          name: data.name,
+          role: data.role,
+          phone: data.phone,
+        },
+      });
+
+      if (data.role === Role.DOCTOR) {
+        await prisma.doctor.create({
+          data: {
+            userId: user.id,
+            specialty: 'Medicina General',
+            licenseNum: `DOC-${user.id}`,
+            isActive: true,
+          },
+        });
+      }
+
+      const token = jwt.sign(
+        { id: user.id, email: user.email, role: user.role },
+        process.env.JWT_SECRET!,
+        { expiresIn: '24h' } as SignOptions
+      );
+
+      return {
+        user: { id: user.id, email: user.email, name: user.name, role: user.role },
+        token,
+      };
+    } catch (error: any) {
+      if (error.code === 'P2002') {
+        throw new AppError('Email already registered', 400);
+      }
+      throw error;
     }
-
-    const hashedPassword = await bcrypt.hash(data.password, 12);
-
-    const user = await prisma.user.create({
-      data: {
-        email: data.email,
-        password: hashedPassword,
-        name: data.name,
-        role: data.role,
-        phone: data.phone,
-      },
-    });
-
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET!,
-      { expiresIn: '24h' } as SignOptions
-    );
-
-    return {
-      user: { id: user.id, email: user.email, name: user.name, role: user.role },
-      token,
-    };
   },
 
   async login(data: LoginData) {

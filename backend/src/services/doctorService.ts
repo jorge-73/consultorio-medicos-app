@@ -43,6 +43,14 @@ export const doctorService = {
     return doctor;
   },
 
+  async getByUserId(userId: number) {
+    const doctor = await doctorRepository.findByUserId(userId);
+    if (!doctor) {
+      throw new AppError('Doctor not found', 404);
+    }
+    return doctor;
+  },
+
   async update(id: number, data: { specialty?: string; description?: string; isActive?: boolean }) {
     const doctor = await doctorRepository.findById(id);
     if (!doctor) {

@@ -1,5 +1,6 @@
 import prisma from '../config/database.js';
 import { AppointmentStatus } from '@prisma/client';
+import { startOfDayDate, endOfDayDate } from '../utils/dateUtils.js';
 
 export const appointmentRepository = {
   async create(data: {
@@ -32,15 +33,10 @@ export const appointmentRepository = {
   },
 
   async findByDoctorAndDate(doctorId: number, date: Date) {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
-
     return prisma.appointment.findMany({
       where: {
         doctorId,
-        date: { gte: startOfDay, lte: endOfDay },
+        date: { gte: startOfDayDate(date), lte: endOfDayDate(date) },
         status: { not: AppointmentStatus.CANCELLED },
       },
       orderBy: { startTime: 'asc' },
@@ -107,27 +103,5 @@ export const appointmentRepository = {
         doctor: { include: { user: { select: { name: true } } } },
       },
     });
-  },
-
-  async checkConflict(doctorId: number, date: Date, startTime: string, endTime: string) {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    const appointments = await prisma.appointment.findMany({
-      where: {
-        doctorId,
-        date: { gte: startOfDay, lte: endOfDay },
-        status: { not: AppointmentStatus.CANCELLED },
-      },
-    });
-
-    for (const apt of appointments) {
-      if (startTime < apt.endTime && endTime > apt.startTime) {
-        return true;
-      }
-    }
-    return false;
   },
 };
