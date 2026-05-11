@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+Disallow: /api/
+Disallow: /doctor
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /profile
+
+Sitemap: https://medicare.example.com/sitemap.xml
