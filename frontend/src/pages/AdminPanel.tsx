@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../hooks/useToast';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { doctorApi, appointmentApi, authApi } from '../services/api';
 import type { Doctor, User, Appointment } from '../types';
 import { formatDateShort } from '../utils/dateUtils';
@@ -9,6 +11,7 @@ import './AdminPanel.css';
 export const AdminPanel = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'doctors' | 'patients' | 'appointments'>('dashboard');
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [patients, setPatients] = useState<User[]>([]);
@@ -16,6 +19,8 @@ export const AdminPanel = () => {
   const [loading, setLoading] = useState(true);
   const [showDoctorModal, setShowDoctorModal] = useState(false);
   const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [doctorToDelete, setDoctorToDelete] = useState<number | null>(null);
   const [doctorForm, setDoctorForm] = useState({
     name: '',
     email: '',
@@ -90,18 +95,27 @@ export const AdminPanel = () => {
       resetDoctorForm();
       loadData();
     } catch (error: any) {
-      alert(error.message || 'Error al guardar médico');
+      toast.error(error.message || 'Error al guardar médico');
     }
   };
 
-  const handleDeleteDoctor = async (id: number) => {
-    if (!confirm('¿Estás seguro de eliminar este médico?')) return;
+  const handleDeleteDoctor = (id: number) => {
+    setDoctorToDelete(id);
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!doctorToDelete) return;
+    setShowConfirmModal(false);
     try {
-      await doctorApi.delete(id);
+      await doctorApi.delete(doctorToDelete);
       loadData();
+      toast.success('Médico eliminado correctamente');
     } catch (error) {
       console.error('Error deleting doctor:', error);
+      toast.error('Error al eliminar médico');
     }
+    setDoctorToDelete(null);
   };
 
   const resetDoctorForm = () => {
@@ -434,7 +448,21 @@ export const AdminPanel = () => {
             </form>
           </div>
         </div>
-      )}
+        )}
+
+      <ConfirmModal
+        isOpen={showConfirmModal}
+        title="Eliminar Médico"
+        message="¿Estás seguro de eliminar este médico? Esta acción no se puede deshacer."
+        confirmText="Sí, eliminar"
+        cancelText="No, cancelar"
+        type="danger"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          setShowConfirmModal(false);
+          setDoctorToDelete(null);
+        }}
+      />
     </div>
   );
 };

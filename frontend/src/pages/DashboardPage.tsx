@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../hooks/useToast';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { appointmentApi, doctorApi } from '../services/api';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import type { Appointment, Doctor, Schedule } from '../types';
-import { formatDateShort, getMinDateStr, getMaxDateStr } from '../utils/dateUtils';
+import { formatDateShort, getMinDateStr, getMaxDateStr, TZ_ARgentina } from '../utils/dateUtils';
+import { toZonedTime } from 'date-fns-tz';
 import './Dashboard.css';
 
 const DAYS_OF_WEEK = [
@@ -22,7 +25,12 @@ const DAYS_OF_WEEK = [
 
 export const DashboardPage = () => {
   const { user, logout } = useAuth();
+  const toast = useToast();
   const calendarRef = useRef(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [appointmentToCancel, setAppointmentToCancel] = useState<number | null>(null);
+  const [selectedAppointmentInfo, setSelectedAppointmentInfo] = useState<Appointment | null>(null);
+  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,10 +111,10 @@ export const DashboardPage = () => {
     setAvailableDayEvents(events);
   };
 
-  const loadAvailableSlots = async () => {
-    if (!selectedDoctor || !selectedDate) return;
+  const loadAvailableSlots = async (doctorId: number, date: string) => {
+    if (!doctorId || !date) return;
     try {
-      const res = await appointmentApi.getAvailableSlots(selectedDoctor, selectedDate);
+      const res = await appointmentApi.getAvailableSlots(doctorId, date);
       if (res.success) {
         setAvailableSlots(res.data || []);
       } else {
@@ -125,15 +133,19 @@ export const DashboardPage = () => {
     if (selectedDoctor === 0) return [];
     const date = info.date;
     if (!date) return [];
-    if (!isDayAvailableFn(date)) return ['fc-day-unavailable'];
+    // Convertir a timezone Argentina para consistencia
+    const localDate = toZonedTime(date, TZ_ARgentina);
+    if (!isDayAvailableFn(localDate)) return ['fc-day-unavailable'];
     return ['fc-day-available'];
   };
 
   const dayCellContent = (info: any) => {
     const date = info.date;
     if (!date) return { html: info.dayNumberText };
-    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-    const available = selectedDoctor !== 0 && isDayAvailableFn(date);
+    // Convertir a timezone Argentina para consistencia
+    const localDate = toZonedTime(date, TZ_ARgentina);
+    const dateStr = `${localDate.getFullYear()}-${String(localDate.getMonth() + 1).padStart(2, '0')}-${String(localDate.getDate()).padStart(2, '0')}`;
+    const available = selectedDoctor !== 0 && isDayAvailableFn(localDate);
     const title = available ? 'Día disponible para turno' : 'Médico no atiende este día';
     return {
       html: `<a href="#" data-date="${dateStr}" title="${title}">${info.dayNumberText}</a>`,
@@ -142,15 +154,16 @@ export const DashboardPage = () => {
 
   const handleDateClick = (info: any) => {
     if (selectedDoctor === 0) return;
-    const date = new Date(info.dateStr);
+    // Interpretar la fecha en timezone Argentina (UTC-3) para evitar desfase
+    const date = toZonedTime(new Date(info.dateStr + 'T12:00:00'), TZ_ARgentina);
     if (!isDayAvailableFn(date)) {
-      alert('El médico no atiende este día. Seleccioná otro día disponible.');
+      toast.warning('El médico no atiende este día. Seleccioná otro día disponible.');
       return;
     }
     setSelectedDate(info.dateStr);
     setSelectedSlot('');
     setShowModal(true);
-    loadAvailableSlots();
+    loadAvailableSlots(selectedDoctor, info.dateStr);
   };
 
   const handleDoctorChange = (doctorId: number) => {
@@ -176,26 +189,33 @@ export const DashboardPage = () => {
         endTime,
         notes,
       });
-      alert('Turno reservado exitosamente');
+      toast.success('Turno reservado exitosamente');
       setShowModal(false);
       setSelectedSlot('');
       setSelectedDate('');
       setNotes('');
       loadData();
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Error al reservar turno');
+      toast.error(error.response?.data?.error || 'Error al reservar turno');
     }
   };
 
-  const handleCancelAppointment = async (id: number) => {
-    if (!confirm('¿Estás seguro de que quieres cancelar este turno?')) return;
+  const handleConfirmCancel = async () => {
+    if (!appointmentToCancel) return;
+    setShowConfirmModal(false);
     try {
-      await appointmentApi.cancel(id);
+      await appointmentApi.cancel(appointmentToCancel);
       loadData();
-      alert('Turno cancelado');
+      toast.success('Turno cancelado');
     } catch (error: any) {
-      alert(error.response?.data?.error || 'Error al cancelar turno');
+      toast.error(error.response?.data?.error || 'Error al cancelar turno');
     }
+    setAppointmentToCancel(null);
+  };
+
+  const handleCancelAppointment = async (id: number) => {
+    setAppointmentToCancel(id);
+    setShowConfirmModal(true);
   };
 
   const getStatusColor = (status: string) => {
@@ -218,12 +238,32 @@ export const DashboardPage = () => {
     }
   };
 
+  const abbreviateName = (name: string): string => {
+    const parts = name.trim().split(' ');
+    if (parts.length <= 2) return name;
+    const firstName = parts[0];
+    const lastName = parts[parts.length - 1];
+    return `${firstName.charAt(0)}. ${lastName}`;
+  };
+
+  const getStatusIcon = (status: string): string => {
+    switch (status) {
+      case 'CONFIRMED': return '✓';
+      case 'PENDING': return '⏳';
+      case 'CANCELLED': return '✕';
+      case 'COMPLETED': return '✓';
+      default: return '•';
+    }
+  };
+
   const appointmentEvents = appointments.map((apt) => ({
     id: apt.id.toString(),
-    title: `${apt.doctor.user.name} - ${apt.status}`,
+    title: `${getStatusIcon(apt.status)} Dr. ${abbreviateName(apt.doctor.user.name)}`,
     start: apt.date,
     backgroundColor: getStatusColor(apt.status),
     borderColor: getStatusColor(apt.status),
+    textColor: '#ffffff',
+    classNames: ['appointment-cal-event'],
   }));
 
   const allEvents = [...availableDayEvents, ...appointmentEvents];
@@ -320,9 +360,8 @@ export const DashboardPage = () => {
                 if (info.event.display === 'background') return;
                 const apt = appointments.find((a) => a.id.toString() === info.event.id);
                 if (apt) {
-                  alert(
-                    `Turno con ${apt.doctor.user.name}\nFecha: ${formatDateShort(apt.date)}\nHora: ${apt.startTime}\nEstado: ${getStatusLabel(apt.status)}`
-                  );
+                  setSelectedAppointmentInfo(apt);
+                  setShowAppointmentModal(true);
                 }
               }}
               locale="es"
@@ -340,9 +379,28 @@ export const DashboardPage = () => {
         </div>
 
         <aside className="appointments-sidebar">
-          <h3>Mis Turnos</h3>
+          <h3>
+            <span className="sidebar-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+            </span>
+            Mis Turnos
+          </h3>
           {appointments.length === 0 ? (
             <div className="no-appointments">
+              <div className="no-appointments-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                  <line x1="9" y1="16" x2="15" y2="16"></line>
+                </svg>
+              </div>
               <p>No tienes turnos reservados</p>
               <p className="hint">Seleccioná un médico y hacé clic en un día disponible del calendario para agendar un turno</p>
             </div>
@@ -350,25 +408,43 @@ export const DashboardPage = () => {
             <ul className="appointments-list">
               {appointments.map((apt) => (
                 <li key={apt.id} className={`appointment-item status-${apt.status.toLowerCase()}`}>
-                  <div className="appointment-info">
-                    <strong>Dr. {apt.doctor.user.name}</strong>
-                    <span className="specialty">{apt.doctor.specialty}</span>
-                  </div>
-                  <div className="appointment-datetime">
-                    <span className="date">{formatDateShort(apt.date)}</span>
-                    <span className="time">{apt.startTime} - {apt.endTime}</span>
-                  </div>
-                  <div className="appointment-status">
+                  <div className="appointment-header">
+                    <div className="appointment-info">
+                      <strong className="doctor-name">Dr. {apt.doctor.user.name}</strong>
+                      <span className="specialty">{apt.doctor.specialty}</span>
+                    </div>
                     <span className="status-badge" style={{ backgroundColor: getStatusColor(apt.status) }}>
                       {getStatusLabel(apt.status)}
                     </span>
+                  </div>
+                  <div className="appointment-datetime">
+                    <div className="datetime-row">
+                      <span className="datetime-icon">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                          <line x1="16" y1="2" x2="16" y2="6"></line>
+                          <line x1="8" y1="2" x2="8" y2="6"></line>
+                          <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                      </span>
+                      <span className="date">{formatDateShort(apt.date)}</span>
+                    </div>
+                    <div className="datetime-row">
+                      <span className="datetime-icon">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                      </span>
+                      <span className="time">{apt.startTime} - {apt.endTime}</span>
+                    </div>
                   </div>
                   {apt.status !== 'CANCELLED' && apt.status !== 'COMPLETED' && (
                     <button
                       className="cancel-appointment-btn"
                       onClick={() => handleCancelAppointment(apt.id)}
                     >
-                      Cancelar
+                      Cancelar turno
                     </button>
                   )}
                 </li>
@@ -436,6 +512,43 @@ export const DashboardPage = () => {
               </button>
               <button onClick={handleBookAppointment} className="confirm-btn" disabled={!selectedSlot}>
                 Reservar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ConfirmModal
+        isOpen={showConfirmModal}
+        title="Cancelar Turno"
+        message="¿Estás seguro de que quieres cancelar este turno?"
+        confirmText="Sí, cancelar"
+        cancelText="No, mantener"
+        type="danger"
+        onConfirm={handleConfirmCancel}
+        onCancel={() => {
+          setShowConfirmModal(false);
+          setAppointmentToCancel(null);
+        }}
+      />
+
+      {showAppointmentModal && selectedAppointmentInfo && (
+        <div className="modal-overlay" onClick={() => setShowAppointmentModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Detalles del Turno</h2>
+            <div className="modal-details">
+              <p><strong>Médico:</strong> Dr. {selectedAppointmentInfo.doctor.user.name}</p>
+              <p><strong>Especialidad:</strong> {selectedAppointmentInfo.doctor.specialty}</p>
+              <p><strong>Fecha:</strong> {formatDateShort(selectedAppointmentInfo.date)}</p>
+              <p><strong>Hora:</strong> {selectedAppointmentInfo.startTime} - {selectedAppointmentInfo.endTime}</p>
+              <p><strong>Estado:</strong> {getStatusLabel(selectedAppointmentInfo.status)}</p>
+              {selectedAppointmentInfo.notes && (
+                <p><strong>Notas:</strong> {selectedAppointmentInfo.notes}</p>
+              )}
+            </div>
+            <div className="modal-actions">
+              <button onClick={() => setShowAppointmentModal(false)} className="confirm-btn">
+                Cerrar
               </button>
             </div>
           </div>

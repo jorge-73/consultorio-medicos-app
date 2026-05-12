@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../hooks/useToast';
 import { appointmentApi, doctorApi } from '../services/api';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -23,6 +24,7 @@ const DAYS_OF_WEEK = [
 export const DoctorPanel = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterDate, setFilterDate] = useState<string>('');
@@ -115,7 +117,7 @@ export const DoctorPanel = () => {
   const handleAddSchedule = async () => {
     if (!user) return;
     if (user.role === 'ADMIN' && !adminDoctorId) {
-      alert('Por favor seleccioná un médico primero');
+      toast.warning('Por favor seleccioná un médico primero');
       return;
     }
     setScheduleLoading(true);
@@ -165,7 +167,7 @@ export const DoctorPanel = () => {
   const handleRemoveSchedule = async (scheduleId: number) => {
     if (!user) return;
     if (user.role === 'ADMIN' && !adminDoctorId) {
-      alert('Por favor seleccioná un médico primero');
+      toast.warning('Por favor seleccioná un médico primero');
       return;
     }
     setScheduleLoading(true);

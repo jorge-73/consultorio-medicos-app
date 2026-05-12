@@ -6,11 +6,14 @@ import {
   addDays,
   getDay,
 } from 'date-fns';
+import { formatInTimeZone, toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { es } from 'date-fns/locale';
+
+export const TZ_ARgentina = 'America/Argentina/Buenos_Aires';
 
 export const parseDate = (dateStr: string): Date => {
   const [year, month, day] = dateStr.split('-').map(Number);
-  return new Date(year, month - 1, day, 12, 0, 0, 0);
+  return toZonedTime(new Date(year, month - 1, day, 12, 0, 0, 0), TZ_ARgentina);
 };
 
 export const parseDateFromISO = (isoStr: string): Date => {
@@ -55,4 +58,36 @@ export const endOfDayDate = (date: Date): Date => {
 
 export const addDaysToDate = (date: Date, days: number): Date => {
   return addDays(date, days);
+};
+
+export const toArgentinaTime = (date: Date): Date => {
+  return toZonedTime(date, TZ_ARgentina);
+};
+
+export const fromArgentinaTime = (date: Date): Date => {
+  return fromZonedTime(date, TZ_ARgentina);
+};
+
+export const formatDateInArgentina = (date: Date | string, formatStr: string): string => {
+  const d = typeof date === 'string' ? parseISO(date) : date;
+  return formatInTimeZone(d, TZ_ARgentina, formatStr, { locale: es });
+};
+
+export const formatDateForCalendar = (date: Date): string => {
+  return formatInTimeZone(date, TZ_ARgentina, 'yyyy-MM-dd');
+};
+
+export const getNowInArgentina = (): Date => {
+  return toArgentinaTime(new Date());
+};
+
+export const formatFullDateLong = (dateStr: string): string => {
+  const parsed = parseDate(dateStr);
+  return formatInTimeZone(parsed, TZ_ARgentina, 'EEEE d MMMM yyyy', { locale: es });
+};
+
+export const formatTimeOnly = (timeStr: string): string => {
+  const [hours, minutes] = timeStr.split(':');
+  const date = new Date(2000, 0, 1, parseInt(hours), parseInt(minutes));
+  return format(date, 'HH:mm');
 };
