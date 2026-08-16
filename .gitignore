@@ -9,6 +9,8 @@ dist/
 coverage/
 *.tgz
 backend/prisma/*.db
-backend/prisma/migrations/
 frontend/dist/
 frontend/build/
+*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts

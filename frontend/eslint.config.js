@@ -1,21 +1,20 @@
-export default [
+import tseslint from 'typescript-eslint';
+import reactHooks from 'eslint-plugin-react-hooks';
+
+export default tseslint.config(
+  {
+    ignores: ['dist/', 'node_modules/'],
+  },
+  ...tseslint.configs.recommended,
   {
     files: ['**/*.{ts,tsx}'],
-    languageOptions: {
-      parser: await import('@typescript-eslint/parser'),
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-        ecmaFeatures: { jsx: true },
-      },
-    },
     plugins: {
-      '@typescript-eslint': await import('@typescript-eslint/eslint-plugin'),
-      'react-hooks': await import('eslint-plugin-react-hooks'),
+      'react-hooks': reactHooks,
     },
     rules: {
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
-];
+);
