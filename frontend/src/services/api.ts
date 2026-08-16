@@ -29,7 +29,7 @@ api.interceptors.response.use(
 );
 
 export const authApi = {
-  register: (data: { email: string; password: string; name: string; role: string; phone?: string }) =>
+  register: (data: { email: string; password: string; name: string; role: string; phone?: string; specialty?: string; licenseNum?: string; description?: string }) =>
     api.post<ApiResponse<AuthResponse>>('/auth/register', data).then((res) => res.data),
 
   login: (data: { email: string; password: string }) =>

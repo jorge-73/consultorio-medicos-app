@@ -77,7 +77,7 @@ export const RegisterPage = () => {
               id="phone"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="+52 123 456 7890"
+              placeholder="+54 9 11 1234-5678"
             />
           </div>
 

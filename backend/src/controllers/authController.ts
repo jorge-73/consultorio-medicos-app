@@ -12,6 +12,9 @@ const registerSchema = z.object({
   name: z.string().min(2),
   role: z.enum([Role.PATIENT, Role.DOCTOR]).default(Role.PATIENT),
   phone: z.string().optional(),
+  specialty: z.string().min(2).optional(),
+  licenseNum: z.string().min(2).optional(),
+  description: z.string().optional(),
 });
 
 const loginSchema = z.object({
