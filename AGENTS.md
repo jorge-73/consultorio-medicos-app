@@ -10,11 +10,14 @@
 ### Backend
 ```powershell
 cd backend
-npm run dev          # Dev server with hot reload (nodemon + ts-node)
-npm run build       # Compile TypeScript
-npm run start        # Run compiled (dist/app.js)
-npm run prisma:generate   # Generate Prisma client
-npm run prisma:migrate    # Run migrations
+npm run dev              # Dev server with hot reload (nodemon + tsx)
+npm run build            # Compile TypeScript
+npm run start            # Run compiled (dist/app.js)
+npm run lint             # ESLint (flat config)
+npm test                 # Vitest (unit tests, no DB required)
+npm run prisma:generate  # Generate Prisma client
+npm run prisma:migrate   # Run migrations
+npm run prisma:seed      # Seed demo data (admin@medicare.local / password123)
 ```
 
 ### Frontend
@@ -48,5 +51,5 @@ npm run lint        # ESLint
 - Frontend: `frontend/src/main.tsx`
 
 ## Environment
-- Backend requires `.env` with `DATABASE_URL` and `FRONTEND_URL`
+- Backend requires `.env` with `DATABASE_URL` and `FRONTEND_URL` (see `.env.example`)
 - Frontend proxies API to backend via Vite config

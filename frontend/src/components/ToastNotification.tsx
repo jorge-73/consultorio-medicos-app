@@ -15,12 +15,12 @@ const ToastItem: React.FC<{ toast: Toast }> = ({ toast }) => {
   const { removeToast } = useToastContext();
   const [isRemoving, setIsRemoving] = React.useState(false);
 
-  const handleRemove = () => {
+  const handleRemove = React.useCallback(() => {
     setIsRemoving(true);
     setTimeout(() => {
       removeToast(toast.id);
     }, 300);
-  };
+  }, [removeToast, toast.id]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -28,7 +28,7 @@ const ToastItem: React.FC<{ toast: Toast }> = ({ toast }) => {
     }, TOAST_DURATION);
 
     return () => clearTimeout(timer);
-  }, [toast.id]);
+  }, [handleRemove]);
 
   return (
     <div className={`toast toast-${toast.type} ${isRemoving ? 'removing' : ''}`} role="alert">

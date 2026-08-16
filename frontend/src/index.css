@@ -169,3 +169,28 @@ h1, h2, h3, h4, h5, h6 {
   from { transform: scale(0.95); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
+
+.page-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-size: 1rem;
+  color: var(--color-text-muted);
+  background: var(--color-background);
+}
+
+.page-loading::after {
+  content: '';
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: pageSpin 1s linear infinite;
+  margin-left: 12px;
+}
+
+@keyframes pageSpin {
+  to { transform: rotate(360deg); }
+}
