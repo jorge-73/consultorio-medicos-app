@@ -6,7 +6,7 @@ import type { Doctor } from '../types';
 import { getMinDateStr, getMaxDateStr } from '../utils/dateUtils';
 import './Profile.css';
 
-type TabType = 'profile' | 'appointments' | 'book';
+type TabType = 'profile' | 'book';
 
 export const ProfilePage = () => {
   const { user, logout, updateUser } = useAuth();
@@ -61,7 +61,7 @@ export const ProfilePage = () => {
       if (res.success) {
         setAvailableSlots(res.data || []);
       }
-    } catch (error) {
+    } catch {
       setAvailableSlots([]);
     }
   }, [selectedDoctor, selectedDate]);

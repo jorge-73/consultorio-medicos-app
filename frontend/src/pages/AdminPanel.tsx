@@ -44,6 +44,19 @@ export const AdminPanel = () => {
     }
   }, [user]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowDoctorModal(false);
+        setShowConfirmModal(false);
+      }
+    };
+    if (showDoctorModal || showConfirmModal) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [showDoctorModal, showConfirmModal]);
+
   const loadData = async () => {
     try {
       const [doctorsRes, appointmentsRes] = await Promise.all([
@@ -80,15 +93,14 @@ export const AdminPanel = () => {
           password: doctorForm.password,
           name: doctorForm.name,
           role: 'DOCTOR',
+          specialty: doctorForm.specialty,
+          licenseNum: doctorForm.licenseNum,
+          description: doctorForm.description,
         });
-        if (userRes.success && userRes.data?.user) {
-          await doctorApi.create({
-            userId: userRes.data.user.id,
-            specialty: doctorForm.specialty,
-            licenseNum: doctorForm.licenseNum,
-            description: doctorForm.description,
-          });
+        if (!userRes.success) {
+          throw new Error(userRes.error || 'Error al crear médico');
         }
+        toast.success('Médico creado correctamente');
       }
       setShowDoctorModal(false);
       setEditingDoctor(null);
@@ -146,8 +158,10 @@ export const AdminPanel = () => {
     try {
       await appointmentApi.confirm(id);
       loadData();
-    } catch (error) {
+      toast.success('Turno confirmado');
+    } catch (error: any) {
       console.error('Error confirming appointment:', error);
+      toast.error(error.response?.data?.error || 'Error al confirmar turno');
     }
   };
 
@@ -155,8 +169,10 @@ export const AdminPanel = () => {
     try {
       await appointmentApi.cancel(id);
       loadData();
-    } catch (error) {
+      toast.success('Turno cancelado');
+    } catch (error: any) {
       console.error('Error canceling appointment:', error);
+      toast.error(error.response?.data?.error || 'Error al cancelar turno');
     }
   };
 
@@ -364,7 +380,7 @@ export const AdminPanel = () => {
 
       {showDoctorModal && (
         <div className="modal-overlay" onClick={() => setShowDoctorModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
+          <div className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={editingDoctor ? 'Editar médico' : 'Agregar médico'}>
             <h2>{editingDoctor ? 'Editar Médico' : 'Agregar Médico'}</h2>
             <form onSubmit={handleSaveDoctor}>
               {!editingDoctor && (

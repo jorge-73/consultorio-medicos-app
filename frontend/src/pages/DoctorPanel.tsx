@@ -44,6 +44,16 @@ export const DoctorPanel = () => {
     }
   }, [user, navigate]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedAppointment(null);
+    };
+    if (selectedAppointment) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [selectedAppointment]);
+
   const loadAvailableDoctors = useCallback(async () => {
     try {
       const res = await doctorApi.getAll();
@@ -74,7 +84,7 @@ export const DoctorPanel = () => {
     try {
       let doctorId: number;
       if (user.role === 'DOCTOR') {
-        let doctorRes = await doctorApi.getByUserId(user.id);
+        const doctorRes = await doctorApi.getByUserId(user.id);
         if (!doctorRes.success || !doctorRes.data) {
           const createRes = await doctorApi.create({
             userId: user.id,
@@ -114,6 +124,14 @@ export const DoctorPanel = () => {
     }
   }, [user, filterDate, adminDoctorId, loadAppointments, loadSchedules, loadAvailableDoctors]);
 
+  const resolveDoctorId = async (): Promise<number | null> => {
+    if (!user) return null;
+    if (user.role === 'ADMIN') return adminDoctorId;
+    const doctorRes = await doctorApi.getByUserId(user.id);
+    if (doctorRes.success && doctorRes.data) return doctorRes.data.id;
+    return null;
+  };
+
   const handleAddSchedule = async () => {
     if (!user) return;
     if (user.role === 'ADMIN' && !adminDoctorId) {
@@ -122,18 +140,11 @@ export const DoctorPanel = () => {
     }
     setScheduleLoading(true);
     try {
-      let doctorId: number;
-      if (user.role === 'DOCTOR') {
-        const doctorRes = await doctorApi.getByUserId(user.id);
-        if (doctorRes.success && doctorRes.data) {
-          doctorId = doctorRes.data.id;
-        } else {
-          setScheduleLoading(false);
-          console.error('Doctor not found');
-          return;
-        }
-      } else {
-        doctorId = adminDoctorId!;
+      const doctorId = await resolveDoctorId();
+      if (!doctorId) {
+        setScheduleLoading(false);
+        toast.error('No se encontró el perfil de médico');
+        return;
       }
       const existingSchedule = schedules.find(s => s.dayOfWeek === newSchedule.dayOfWeek);
       
@@ -172,11 +183,11 @@ export const DoctorPanel = () => {
     }
     setScheduleLoading(true);
     try {
-      let doctorId: number;
-      if (user.role === 'DOCTOR') {
-        doctorId = user.id;
-      } else {
-        doctorId = adminDoctorId!;
+      const doctorId = await resolveDoctorId();
+      if (!doctorId) {
+        setScheduleLoading(false);
+        toast.error('No se encontró el perfil de médico');
+        return;
       }
       const updatedSchedules = schedules.filter(s => s.id !== scheduleId);
       await doctorApi.setSchedules(doctorId, updatedSchedules.map(s => ({
@@ -185,8 +196,10 @@ export const DoctorPanel = () => {
         endTime: s.endTime
       })));
       loadSchedules();
-    } catch (error) {
+      toast.success('Horario eliminado');
+    } catch (error: any) {
       console.error('Error removing schedule:', error);
+      toast.error(error.response?.data?.error || 'Error al eliminar horario');
     } finally {
       setScheduleLoading(false);
     }
@@ -196,8 +209,10 @@ export const DoctorPanel = () => {
     try {
       await appointmentApi.confirm(id);
       loadAppointments();
-    } catch (error) {
+      toast.success('Turno confirmado');
+    } catch (error: any) {
       console.error('Error confirming appointment:', error);
+      toast.error(error.response?.data?.error || 'Error al confirmar turno');
     }
   };
 
@@ -205,8 +220,10 @@ export const DoctorPanel = () => {
     try {
       await appointmentApi.cancel(id);
       loadAppointments();
-    } catch (error) {
+      toast.success('Turno cancelado');
+    } catch (error: any) {
       console.error('Error canceling appointment:', error);
+      toast.error(error.response?.data?.error || 'Error al cancelar turno');
     }
   };
 
@@ -214,8 +231,10 @@ export const DoctorPanel = () => {
     try {
       await appointmentApi.updateStatus(id, 'COMPLETED');
       loadAppointments();
-    } catch (error) {
+      toast.success('Turno completado');
+    } catch (error: any) {
       console.error('Error completing appointment:', error);
+      toast.error(error.response?.data?.error || 'Error al completar turno');
     }
   };
 
@@ -541,7 +560,7 @@ export const DoctorPanel = () => {
 
       {selectedAppointment && (
         <div className="modal-overlay" onClick={() => setSelectedAppointment(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Detalles del turno">
             <h2>Detalles del Turno</h2>
             <div className="modal-details">
               <p><strong>Paciente:</strong> {selectedAppointment.patient.name}</p>

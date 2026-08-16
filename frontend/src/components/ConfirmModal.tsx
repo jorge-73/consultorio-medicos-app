@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import './ConfirmModal.css';
 
 interface ConfirmModalProps {
@@ -22,11 +22,41 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   onConfirm,
   onCancel,
 }) => {
+  const confirmButtonRef = useRef<HTMLButtonElement>(null);
+  const onCancelRef = useRef(onCancel);
+  onCancelRef.current = onCancel;
+  const titleId = useRef(`confirm-modal-title-${Math.random().toString(36).substr(2, 9)}`).current;
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previousFocus = document.activeElement as HTMLElement | null;
+    confirmButtonRef.current?.focus();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onCancelRef.current();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      previousFocus?.focus();
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
     <div className="confirm-modal-overlay" onClick={onCancel}>
-      <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="confirm-modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
         <div className={`confirm-modal-icon confirm-modal-icon-${type}`}>
           {type === 'danger' && (
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -51,14 +81,14 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           )}
         </div>
         
-        <h3 className="confirm-modal-title">{title}</h3>
+        <h3 className="confirm-modal-title" id={titleId}>{title}</h3>
         <p className="confirm-modal-message">{message}</p>
         
         <div className="confirm-modal-actions">
           <button onClick={onCancel} className="confirm-modal-btn cancel">
             {cancelText}
           </button>
-          <button onClick={onConfirm} className={`confirm-modal-btn confirm ${type}`}>
+          <button ref={confirmButtonRef} onClick={onConfirm} className={`confirm-modal-btn confirm ${type}`}>
             {confirmText}
           </button>
         </div>

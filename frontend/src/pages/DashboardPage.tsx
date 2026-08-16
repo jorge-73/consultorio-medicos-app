@@ -47,6 +47,19 @@ export const DashboardPage = () => {
     loadData();
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowModal(false);
+        setShowAppointmentModal(false);
+      }
+    };
+    if (showModal || showAppointmentModal) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [showModal, showAppointmentModal]);
+
   const loadData = async () => {
     try {
       const [appointmentsRes, doctorsRes] = await Promise.all([
@@ -120,7 +133,7 @@ export const DashboardPage = () => {
       } else {
         setAvailableSlots([]);
       }
-    } catch (error: any) {
+    } catch {
       setAvailableSlots([]);
     }
   };
@@ -456,7 +469,7 @@ export const DashboardPage = () => {
 
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Reservar turno">
             <h2>Reservar Turno</h2>
 
             <div className="doctor-availability">
@@ -534,7 +547,7 @@ export const DashboardPage = () => {
 
       {showAppointmentModal && selectedAppointmentInfo && (
         <div className="modal-overlay" onClick={() => setShowAppointmentModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Detalles del turno">
             <h2>Detalles del Turno</h2>
             <div className="modal-details">
               <p><strong>Médico:</strong> Dr. {selectedAppointmentInfo.doctor.user.name}</p>
