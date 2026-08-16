@@ -18,21 +18,19 @@ export const scheduleRepository = {
     });
   },
 
+  async findById(id: number) {
+    return prisma.schedule.findUnique({ where: { id } });
+  },
+
   async update(id: number, data: { dayOfWeek?: number; startTime?: string; endTime?: string; isActive?: boolean }) {
     return prisma.schedule.update({ where: { id }, data });
   },
 
   async delete(id: number) {
-    return prisma.schedule.update({
-      where: { id },
-      data: { isActive: false },
-    });
+    return prisma.schedule.delete({ where: { id } });
   },
 
   async deleteManyByDoctorId(doctorId: number) {
-    return prisma.schedule.updateMany({
-      where: { doctorId },
-      data: { isActive: false },
-    });
+    return prisma.schedule.deleteMany({ where: { doctorId } });
   },
 };

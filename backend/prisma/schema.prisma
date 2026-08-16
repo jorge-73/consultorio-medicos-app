@@ -63,6 +63,7 @@ model Schedule {
 
   doctor     Doctor   @relation(fields: [doctorId], references: [id])
 
+  @@unique([doctorId, dayOfWeek])
   @@map("schedules")
 }
 
@@ -83,6 +84,7 @@ model Appointment {
 
   @@index([doctorId, date])
   @@index([patientId, date])
+  @@unique([doctorId, date, startTime])
 
   @@map("appointments")
 }

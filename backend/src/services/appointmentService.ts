@@ -4,7 +4,7 @@ import { scheduleRepository } from '../repositories/scheduleRepository.js';
 import { doctorRepository } from '../repositories/doctorRepository.js';
 import { AppError } from '../middleware/error.js';
 import { emailService } from './emailService.js';
-import { parseDate, generateTimeSlots, getDayOfWeek, startOfDayDate, endOfDayDate, formatDateShort } from '../utils/dateUtils.js';
+import { generateTimeSlots, getDayOfWeek, startOfDayDate, formatDateShort, APPOINTMENT_DURATION_MINUTES } from '../utils/dateUtils.js';
 import prisma from '../config/database.js';
 
 interface CreateAppointmentData {
@@ -15,6 +15,22 @@ interface CreateAppointmentData {
   endTime: string;
   notes?: string;
 }
+
+export interface AppointmentActor {
+  id: number;
+  role: string;
+  doctorId?: number;
+}
+
+const assertCanModify = (appointment: { patientId: number; doctorId: number }, actor: AppointmentActor) => {
+  if (actor.role === 'DOCTOR') {
+    if (!actor.doctorId || appointment.doctorId !== actor.doctorId) {
+      throw new AppError('Not authorized to modify this appointment', 403);
+    }
+  } else if (actor.role === 'PATIENT' && appointment.patientId !== actor.id) {
+    throw new AppError('Not authorized to modify this appointment', 403);
+  }
+};
 
 export const appointmentService = {
   async create(data: CreateAppointmentData) {
@@ -27,9 +43,29 @@ export const appointmentService = {
       throw new AppError('Doctor is not active', 400);
     }
 
+    if (data.date < startOfDayDate(new Date())) {
+      throw new AppError('Cannot book appointments in the past', 400);
+    }
+
     const schedule = await scheduleRepository.findByDay(data.doctorId, getDayOfWeek(data.date));
     if (schedule.length === 0) {
       throw new AppError('Doctor not available on this day', 400);
+    }
+
+    const withinSchedule = schedule.some(
+      (s) => data.startTime >= s.startTime && data.endTime <= s.endTime
+    );
+    if (!withinSchedule) {
+      throw new AppError('Appointment time is outside the doctor schedule', 400);
+    }
+
+    const [, startMin] = data.startTime.split(':').map(Number);
+    if (startMin % APPOINTMENT_DURATION_MINUTES !== 0) {
+      throw new AppError(`Appointments must start at ${APPOINTMENT_DURATION_MINUTES}-minute intervals`, 400);
+    }
+
+    if (data.startTime >= data.endTime) {
+      throw new AppError('End time must be after start time', 400);
     }
 
     const appointments = await appointmentRepository.findByDoctorAndDate(
@@ -43,11 +79,15 @@ export const appointmentService = {
       throw new AppError('Time slot is already booked', 400);
     }
 
-    if (data.startTime >= data.endTime) {
-      throw new AppError('End time must be after start time', 400);
+    let appointment;
+    try {
+      appointment = await appointmentRepository.create(data);
+    } catch (error: any) {
+      if (error?.code === 'P2002') {
+        throw new AppError('Time slot is already booked', 400);
+      }
+      throw error;
     }
-
-    const appointment = await appointmentRepository.create(data);
 
     const patient = await prisma.user.findUnique({ where: { id: data.patientId } });
     const doctorData = await doctorRepository.findById(data.doctorId);
@@ -66,11 +106,16 @@ export const appointmentService = {
     return appointment;
   },
 
-  async getById(id: number) {
+  async getById(id: number, actor?: AppointmentActor) {
     const appointment = await appointmentRepository.findById(id);
     if (!appointment) {
       throw new AppError('Appointment not found', 404);
     }
+
+    if (actor) {
+      assertCanModify(appointment, actor);
+    }
+
     return appointment;
   },
 
@@ -110,7 +155,7 @@ export const appointmentService = {
       for (const slot of slots) {
         const slotEndMins = (() => {
           const [h, m] = slot.split(':').map(Number);
-          return h * 60 + m + 30;
+          return h * 60 + m + APPOINTMENT_DURATION_MINUTES;
         })();
         const isBooked = appointments.some((a) => {
           const [ah, am] = a.startTime.split(':').map(Number);
@@ -128,28 +173,24 @@ export const appointmentService = {
     return availableSlots;
   },
 
-  async updateStatus(id: number, status: AppointmentStatus, userId: number, userRole: string) {
+  async updateStatus(id: number, status: AppointmentStatus, actor: AppointmentActor) {
     const appointment = await appointmentRepository.findById(id);
     if (!appointment) {
       throw new AppError('Appointment not found', 404);
     }
 
-    if (userRole !== 'ADMIN' && userRole !== 'DOCTOR') {
-      if (appointment.patientId !== userId) {
-        throw new AppError('Not authorized to modify this appointment', 403);
-      }
+    if (actor.role === 'PATIENT' && status !== AppointmentStatus.CANCELLED) {
+      throw new AppError('Patients can only cancel their own appointments', 403);
     }
 
-    if (userRole === 'DOCTOR' && appointment.doctorId !== userId) {
-      throw new AppError('Not authorized to modify this appointment', 403);
-    }
+    assertCanModify(appointment, actor);
 
     return appointmentRepository.updateStatus(id, status);
   },
 
-  async cancel(id: number, userId: number, userRole: string) {
+  async cancel(id: number, actor: AppointmentActor) {
     const appointment = await appointmentRepository.findById(id);
-    const updated = await this.updateStatus(id, AppointmentStatus.CANCELLED, userId, userRole);
+    const updated = await this.updateStatus(id, AppointmentStatus.CANCELLED, actor);
 
     if (appointment && updated) {
       const patient = await prisma.user.findUnique({ where: { id: appointment.patientId } });
@@ -170,9 +211,9 @@ export const appointmentService = {
     return updated;
   },
 
-  async confirm(id: number, userId: number, userRole: string) {
+  async confirm(id: number, actor: AppointmentActor) {
     const appointment = await appointmentRepository.findById(id);
-    const updated = await this.updateStatus(id, AppointmentStatus.CONFIRMED, userId, userRole);
+    const updated = await this.updateStatus(id, AppointmentStatus.CONFIRMED, actor);
 
     if (appointment && updated) {
       const patient = await prisma.user.findUnique({ where: { id: appointment.patientId } });
@@ -193,7 +234,7 @@ export const appointmentService = {
     return updated;
   },
 
-  async complete(id: number, userId: number, userRole: string) {
-    return this.updateStatus(id, AppointmentStatus.COMPLETED, userId, userRole);
+  async complete(id: number, actor: AppointmentActor) {
+    return this.updateStatus(id, AppointmentStatus.COMPLETED, actor);
   },
 };

@@ -13,10 +13,12 @@ const createDoctorSchema = z.object({
   description: z.string().optional(),
 });
 
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+
 const scheduleSchema = z.object({
   dayOfWeek: z.number().min(0).max(6),
-  startTime: z.string(),
-  endTime: z.string(),
+  startTime: z.string().regex(TIME_PATTERN, 'Start time must be in HH:mm format'),
+  endTime: z.string().regex(TIME_PATTERN, 'End time must be in HH:mm format'),
 });
 
 const updateDoctorSchema = z.object({
@@ -96,7 +98,7 @@ router.get('/:id/schedules', async (req, res: Response, next) => {
 router.post('/:id/schedules', authenticate, authorize(Role.ADMIN, Role.DOCTOR), async (req: AuthRequest, res: Response, next) => {
   try {
     const schedules = z.array(scheduleSchema).parse(req.body);
-    const result = await doctorService.setSchedules(Number(req.params.id), schedules);
+    const result = await doctorService.setSchedules(Number(req.params.id), schedules, req.user);
     res.status(201).json({ success: true, data: result });
   } catch (error: any) {
     next(error);
@@ -105,7 +107,7 @@ router.post('/:id/schedules', authenticate, authorize(Role.ADMIN, Role.DOCTOR), 
 
 router.delete('/schedules/:scheduleId', authenticate, authorize(Role.ADMIN, Role.DOCTOR), async (req: AuthRequest, res: Response, next) => {
   try {
-    await doctorService.removeSchedule(Number(req.params.scheduleId));
+    await doctorService.removeSchedule(Number(req.params.scheduleId), req.user);
     res.json({ success: true, message: 'Schedule removed successfully' });
   } catch (error: any) {
     next(error);

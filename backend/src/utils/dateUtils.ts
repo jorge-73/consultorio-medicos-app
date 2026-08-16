@@ -56,17 +56,16 @@ export const endOfDayDate = (date: Date): Date => {
   return endOfDay(date);
 };
 
+export const APPOINTMENT_DURATION_MINUTES = 30;
+
 export const generateTimeSlots = (
   startTime: string,
   endTime: string,
-  durationMinutes = 30
+  durationMinutes = APPOINTMENT_DURATION_MINUTES
 ): string[] => {
   const slots: string[] = [];
   const [startHour, startMin] = startTime.split(':').map(Number);
   const [endHour, endMin] = endTime.split(':').map(Number);
-
-  let currentHour = startHour;
-  let currentMin = startMin;
 
   const endTotalMins = endHour * 60 + endMin;
   const startTotalMins = startHour * 60 + startMin;

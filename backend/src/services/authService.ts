@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import { Role } from '@prisma/client';
 import prisma from '../config/database.js';
+import { userRepository } from '../repositories/userRepository.js';
 import { AppError } from '../middleware/error.js';
 
 interface RegisterData {
@@ -10,12 +11,19 @@ interface RegisterData {
   name: string;
   role: Role;
   phone?: string;
+  specialty?: string;
+  licenseNum?: string;
+  description?: string;
 }
 
 interface LoginData {
   email: string;
   password: string;
 }
+
+const signToken = (payload: { id: number; email: string; role: Role; doctorId?: number }) => {
+  return jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '24h' } as SignOptions);
+};
 
 export const authService = {
   async register(data: RegisterData) {
@@ -37,22 +45,21 @@ export const authService = {
         },
       });
 
+      let doctorId: number | undefined;
       if (data.role === Role.DOCTOR) {
-        await prisma.doctor.create({
+        const doctor = await prisma.doctor.create({
           data: {
             userId: user.id,
-            specialty: 'Medicina General',
-            licenseNum: `DOC-${user.id}`,
+            specialty: data.specialty ?? 'Medicina General',
+            licenseNum: data.licenseNum ?? `DOC-${user.id}`,
+            description: data.description,
             isActive: true,
           },
         });
+        doctorId = doctor.id;
       }
 
-      const token = jwt.sign(
-        { id: user.id, email: user.email, role: user.role },
-        process.env.JWT_SECRET!,
-        { expiresIn: '24h' } as SignOptions
-      );
+      const token = signToken({ id: user.id, email: user.email, role: user.role, doctorId });
 
       return {
         user: { id: user.id, email: user.email, name: user.name, role: user.role },
@@ -60,6 +67,9 @@ export const authService = {
       };
     } catch (error: any) {
       if (error.code === 'P2002') {
+        if (error.meta?.target?.includes('licenseNum')) {
+          throw new AppError('License number already registered', 400);
+        }
         throw new AppError('Email already registered', 400);
       }
       throw error;
@@ -77,11 +87,16 @@ export const authService = {
       throw new AppError('Invalid credentials', 401);
     }
 
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET!,
-      { expiresIn: '24h' } as SignOptions
-    );
+    let doctorId: number | undefined;
+    if (user.role === Role.DOCTOR) {
+      const doctor = await prisma.doctor.findUnique({
+        where: { userId: user.id },
+        select: { id: true },
+      });
+      doctorId = doctor?.id;
+    }
+
+    const token = signToken({ id: user.id, email: user.email, role: user.role, doctorId });
 
     return {
       user: { id: user.id, email: user.email, name: user.name, role: user.role },
@@ -90,7 +105,7 @@ export const authService = {
   },
 
   async getProfile(userId: number) {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const user = await userRepository.findById(userId);
     if (!user) {
       throw new AppError('User not found', 404);
     }
@@ -98,7 +113,7 @@ export const authService = {
   },
 
   async updateProfile(userId: number, data: { name?: string; phone?: string }) {
-    const user = await prisma.user.update({ where: { id: userId }, data });
+    const user = await userRepository.update(userId, data);
     return user;
   },
 
@@ -120,10 +135,7 @@ export const authService = {
   },
 
   async getPatients() {
-    const patients = await prisma.user.findMany({
-      where: { role: Role.PATIENT },
-      orderBy: { createdAt: 'desc' },
-    });
+    const patients = await userRepository.findAll(undefined, 'createdAt');
     return patients;
   },
 };

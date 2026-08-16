@@ -35,12 +35,15 @@ export const userRepository = {
     return prisma.user.findUnique({ where: { email }, select });
   },
 
-  async findAll(select: UserSelect = defaultSelect) {
-    return prisma.user.findMany({ select, orderBy: { name: 'asc' } });
+  async findAll(select: UserSelect = defaultSelect, orderBy: 'name' | 'createdAt' = 'name') {
+    return prisma.user.findMany({
+      select,
+      orderBy: orderBy === 'createdAt' ? { createdAt: 'desc' } : { name: 'asc' },
+    });
   },
 
   async update(id: number, data: { name?: string; phone?: string; password?: string }) {
-    return prisma.user.update({ where: { id }, data });
+    return prisma.user.update({ where: { id }, data, select: defaultSelect });
   },
 
   async delete(id: number) {

@@ -1,7 +1,7 @@
 import { doctorRepository } from '../repositories/doctorRepository.js';
 import { scheduleRepository } from '../repositories/scheduleRepository.js';
-import { userRepository } from '../repositories/userRepository.js';
 import { AppError } from '../middleware/error.js';
+import prisma from '../config/database.js';
 
 interface CreateDoctorData {
   userId: number;
@@ -15,6 +15,18 @@ interface ScheduleData {
   startTime: string;
   endTime: string;
 }
+
+export interface DoctorActor {
+  id: number;
+  role: string;
+  doctorId?: number;
+}
+
+const assertCanManageDoctor = (doctorId: number, actor?: DoctorActor) => {
+  if (actor && actor.role === 'DOCTOR' && actor.doctorId !== doctorId) {
+    throw new AppError('Forbidden - You can only manage your own schedule', 403);
+  }
+};
 
 export const doctorService = {
   async create(data: CreateDoctorData) {
@@ -71,19 +83,32 @@ export const doctorService = {
     return scheduleRepository.findByDoctorId(doctorId);
   },
 
-  async setSchedules(doctorId: number, schedules: ScheduleData[]) {
+  async setSchedules(doctorId: number, schedules: ScheduleData[], actor?: DoctorActor) {
+    assertCanManageDoctor(doctorId, actor);
+
     const doctor = await doctorRepository.findById(doctorId);
     if (!doctor) {
       throw new AppError('Doctor not found', 404);
     }
 
-    await scheduleRepository.deleteManyByDoctorId(doctorId);
+    const seenDays = new Set<number>();
+    for (const s of schedules) {
+      if (seenDays.has(s.dayOfWeek)) {
+        throw new AppError('Duplicate day in schedule', 400);
+      }
+      seenDays.add(s.dayOfWeek);
 
-    const createdSchedules = await Promise.all(
-      schedules.map((s) => scheduleRepository.create({ doctorId, ...s }))
-    );
+      if (s.startTime >= s.endTime) {
+        throw new AppError('Start time must be before end time', 400);
+      }
+    }
 
-    return createdSchedules;
+    return prisma.$transaction(async () => {
+      await scheduleRepository.deleteManyByDoctorId(doctorId);
+      return Promise.all(
+        schedules.map((s) => scheduleRepository.create({ doctorId, ...s }))
+      );
+    });
   },
 
   async addSchedule(doctorId: number, data: ScheduleData) {
@@ -91,10 +116,27 @@ export const doctorService = {
     if (!doctor) {
       throw new AppError('Doctor not found', 404);
     }
+
+    if (data.startTime >= data.endTime) {
+      throw new AppError('Start time must be before end time', 400);
+    }
+
+    const existing = await scheduleRepository.findByDay(doctorId, data.dayOfWeek);
+    if (existing.length > 0) {
+      throw new AppError('Schedule already exists for this day', 400);
+    }
+
     return scheduleRepository.create({ doctorId, ...data });
   },
 
-  async removeSchedule(scheduleId: number) {
+  async removeSchedule(scheduleId: number, actor?: DoctorActor) {
+    const schedule = await scheduleRepository.findById(scheduleId);
+    if (!schedule) {
+      throw new AppError('Schedule not found', 404);
+    }
+
+    assertCanManageDoctor(schedule.doctorId, actor);
+
     return scheduleRepository.delete(scheduleId);
   },
 };
